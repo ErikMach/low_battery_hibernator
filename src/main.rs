@@ -26,16 +26,18 @@ use windows::{
 	    RegisterPowerSettingNotification,
 	    UnregisterPowerSettingNotification,
 	    SetSuspendState,
+GetSystemPowerStatus,
+SYSTEM_POWER_STATUS,
 	},
 	LibraryLoader::GetModuleHandleW,
 	SystemServices::GUID_BATTERY_PERCENTAGE_REMAINING,
     },
 };
 
-// ""
+// Windows string for: ""
 const WINDOW_TITLE: &[u16; 1] = &[0];
 
-// "HiddenWindowClass"
+// Windows string for: "HiddenWindowClass"
 const CLASS_NAME: &[u16; 18] = &[72, 105, 100, 100, 101, 110, 87, 105, 110, 100, 111, 119, 67, 108, 97, 115, 115, 0];
 
 
@@ -91,7 +93,13 @@ fn process_power_setting_change(lparam: LPARAM) {
     if data.PowerSetting == GUID_BATTERY_PERCENTAGE_REMAINING {
 	let percentage = data.Data[0];
 	if percentage < 65 {
-	    let _ = unsafe { SetSuspendState(true, false, false) };
+	    let mut power_status = SYSTEM_POWER_STATUS::default();
+	    if
+		unsafe { GetSystemPowerStatus(&mut power_status).is_ok() } &&
+		power_status.ACLineStatus != 1 // device is not known to be charging
+	    {
+		let _ = unsafe { SetSuspendState(true, false, false) };
+	    }
 	}
     }
 }
